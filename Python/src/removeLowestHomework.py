@@ -7,6 +7,7 @@ __author__ = 'stephane mbatchou'
 
 '''
 this script look at the database and remove the lowest homework score for each student
+it  finds the lowest homework in code and then update the scores array with the low homework pruned
 
 '''
 # establish a connection to the database
