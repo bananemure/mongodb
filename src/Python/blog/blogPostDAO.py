@@ -1,6 +1,9 @@
 __author__ = 'smbatchou'
 
 
+#This script is adapted from the 10gen version at
+#Copyright (c) 2008 - 2013 10gen, Inc. <http://10gen.com>
+
 import sys
 import re
 import datetime
@@ -37,9 +40,7 @@ class BlogPostDAO:
 
         # now insert the post
         try:
-            #  insert the post
-            self.posts.save(post)
-
+            self.posts.insert(post)
             print "Inserting the post"
         except:
             print "Error inserting post"
@@ -50,15 +51,7 @@ class BlogPostDAO:
     # returns an array of num_posts posts, reverse ordered
     def get_posts(self, num_posts):
 
-        cursor = []         # Placeholder so blog compiles before you make your changes
-
-        #  here to get the posts
-        try:
-            cursor = self.posts.find().limit(10).sort('_id',-1)
-        except:
-            print "Error retrieving reverse ordered post"
-            print "Unexpected error:", sys.exc_info()[0]
-
+        cursor = self.posts.find().sort('date', direction=-1).limit(num_posts)
         l = []
 
         for post in cursor:
@@ -76,24 +69,38 @@ class BlogPostDAO:
 
         return l
 
+    # returns an array of num_posts posts, reverse ordered, filtered by tag
+    def get_posts_by_tag(self, tag, num_posts):
+
+        cursor = self.posts.find({'tags':tag}).sort('date', direction=-1).limit(num_posts)
+        l = []
+
+        for post in cursor:
+            post['date'] = post['date'].strftime("%A, %B %d %Y at %I:%M%p")     # fix up date
+            if 'tags' not in post:
+                post['tags'] = []           # fill it in if its not there already
+            if 'comments' not in post:
+                post['comments'] = []
+
+            l.append({'title': post['title'], 'body': post['body'], 'post_date': post['date'],
+                      'permalink': post['permalink'],
+                      'tags': post['tags'],
+                      'author': post['author'],
+                      'comments': post['comments']})
+
+        return l
 
     # find a post corresponding to a particular permalink
     def get_post_by_permalink(self, permalink):
 
-        post = None
-        # retrieve the specified post
-        try:
-            cursor= self.posts.find({"permalink": permalink})
-        except:
-            print "Error retrieving post by permalink"
-            print "Unexpected error:", sys.exc_info()[0]
-
-        if cursor.alive:
-            post= cursor.next()
-        else:
-            post = None
+        post = self.posts.find_one({'permalink': permalink})
 
         if post is not None:
+            # fix up likes values. set to zero if data is not present
+            for comment in post['comments']:
+                if 'num_likes' not in comment:
+                    comment['num_likes'] = 0
+
             # fix up date
             post['date'] = post['date'].strftime("%A, %B %d %Y at %I:%M%p")
 
@@ -108,17 +115,18 @@ class BlogPostDAO:
             comment['email'] = email
 
         try:
-            #add the comment to the designated post
+            last_error = self.posts.update({'permalink': permalink}, {'$push': {'comments': comment}}, upsert=False,
+                                           manipulate=False, safe=True)
 
-            last_error = self.posts.update({"permalink": permalink},{"$push": {"comments": comment}},safe=True)
-            #last_error = self.db.command("getLastError",1)
-
-            return last_error['n']         # return the number of documents updated
+            return last_error['n']          # return the number of documents updated
 
         except:
             print "Could not update the collection, error"
             print "Unexpected error:", sys.exc_info()[0]
             return 0
+
+
+
 
 
 

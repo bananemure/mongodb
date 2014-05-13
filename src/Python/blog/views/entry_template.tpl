@@ -19,9 +19,9 @@ Posted {{post['date']}}<i> By {{post['author']}}</i><br>
 <em>Filed Under</em>: 
 %if ('tags' in post):
 %for tag in post['tags'][0:1]:
-{{tag}}
+<a href="/tag/{{tag}}">{{tag}}</a>
 %for tag in post['tags'][1:]:
-, {{tag}}
+, <a href="/tag/{{tag}}">{{tag}}</a>
 %end
 %end
 %end

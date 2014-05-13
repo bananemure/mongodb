@@ -1,21 +1,7 @@
 
-#This script is adapted from the 10gen version at
-# Copyright (c) 2008 - 2013 10gen, Inc. <http://10gen.com>
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-#
 
+#This script is adapted from the 10gen version at
+#Copyright (c) 2008 - 2013 10gen, Inc. <http://10gen.com>
 
 
 import pymongo
@@ -49,6 +35,20 @@ def blog_index():
 
     # even if there is no logged in user, we can show the blog
     l = posts.get_posts(10)
+
+    return bottle.template('blog_template', dict(myposts=l, username=username))
+
+# The main page of the blog, filtered by tag
+@bottle.route('/tag/<tag>')
+def posts_by_tag(tag="notfound"):
+
+    cookie = bottle.request.get_cookie("session")
+    tag = cgi.escape(tag)
+
+    username = sessions.get_username(cookie)
+
+    # even if there is no logged in user, we can show the blog
+    l = posts.get_posts_by_tag(tag, 10)
 
     return bottle.template('blog_template', dict(myposts=l, username=username))
 
@@ -109,7 +109,6 @@ def post_new_comment():
         posts.add_comment(permalink, name, email, body)
 
         bottle.redirect("/post/" + permalink)
-
 
 @bottle.get("/post_not_found")
 def post_not_found():
@@ -326,9 +325,6 @@ posts = blogPostDAO.BlogPostDAO(database)
 users = userDAO.UserDAO(database)
 sessions = sessionDAO.SessionDAO(database)
 
-
-
-#print posts.add_comment('lEslFFycJvxBqOqIhuMxFlRJOpWJrX','vincent', 'nini@yahoo.fr', 'va va va va')
 
 bottle.debug(True)
 bottle.run(host='localhost', port=8082)         # Start the webserver running and wait for requests
